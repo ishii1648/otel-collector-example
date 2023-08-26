@@ -1,0 +1,47 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+
+processors:
+  attributes:
+    actions:
+      - key: collector
+        value: otel-collector
+        action: insert
+
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 10
+    expected_new_traces_per_sec: 10
+    policies:
+      [
+        {
+          name: longer-than-500ms,
+          type: latency,
+          latency: { threshold_ms: 500 },
+        },
+        {
+          type: string_attribute,
+          string_attribute: {
+            key: "http.url",
+            values: ["https://www.yahoo.co.jp"]
+          }
+        }
+      ]
+
+exporters:
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [attributes, tail_sampling]
+      exporters: [jaeger]
+  telemetry:
+    logs:
+      level: "debug"
